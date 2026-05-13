@@ -12,9 +12,9 @@ import {
   aiPath,
   applyImport,
   importDirectory,
+  linkDirectory,
   readJson,
   stripJsonMarker,
-  syncDirectory,
   writeJsonManaged,
 } from "./shared.js";
 import {
@@ -25,7 +25,7 @@ import {
   readTextIfExists,
 } from "../utils/fs.js";
 import { parseJson } from "../utils/json.js";
-import { safeWrite } from "../core/conflict.js";
+import { safeLink } from "../core/symlink.js";
 
 const EDITOR: EditorId = "cursor";
 const DIR = EDITOR_DIRS[EDITOR];
@@ -42,13 +42,13 @@ async function syncRules(ctx: SyncContext): Promise<WriteResult[]> {
   await ensureDir(destDir);
   const entries = await listDir(srcDir);
   for (const name of entries) {
-    const stat = await fse.stat(path.join(srcDir, name));
+    const src = path.join(srcDir, name);
+    const stat = await fse.stat(src);
     if (!stat.isFile()) continue;
-    const text = await fse.readFile(path.join(srcDir, name), "utf8");
     const destName = name.replace(/\.md$/i, ".mdc");
     const dest = path.join(destDir, destName);
     results.push(
-      await safeWrite(dest, text, {
+      await safeLink(src, dest, {
         dryRun: ctx.options.dryRun,
         force: ctx.options.force,
       }),
@@ -78,7 +78,7 @@ async function syncAdditional(
 ): Promise<WriteResult[]> {
   const srcDir = aiPath(ctx.root, type);
   const destDir = editorPath(ctx.root, type);
-  return syncDirectory(srcDir, destDir, ctx.options);
+  return linkDirectory(srcDir, destDir, ctx.options);
 }
 
 async function syncHooks(ctx: SyncContext): Promise<WriteResult[]> {
@@ -98,7 +98,7 @@ async function syncHooks(ctx: SyncContext): Promise<WriteResult[]> {
   }
   const hooksDir = aiPath(ctx.root, AI_PATHS.hooksDir);
   const dest = editorPath(ctx.root, "hooks");
-  const dirResults = await syncDirectory(hooksDir, dest, ctx.options);
+  const dirResults = await linkDirectory(hooksDir, dest, ctx.options);
   results.push(...dirResults);
   return results;
 }

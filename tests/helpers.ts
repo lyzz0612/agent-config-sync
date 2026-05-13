@@ -2,6 +2,32 @@ import os from "node:os";
 import path from "node:path";
 import fse from "fs-extra";
 
+let symlinkCapability: boolean | null = null;
+
+/**
+ * Probe once whether the current process can create symbolic links. On
+ * Windows this typically requires Developer Mode or admin rights; in that
+ * case integration tests that depend on real symlinks are skipped.
+ */
+export async function canCreateSymlinks(): Promise<boolean> {
+  if (symlinkCapability !== null) return symlinkCapability;
+  const dir = await fse.mkdtemp(path.join(os.tmpdir(), "acs-linkprobe-"));
+  try {
+    const src = path.join(dir, "src");
+    const lnk = path.join(dir, "lnk");
+    await fse.writeFile(src, "x", "utf8");
+    try {
+      await fse.symlink(src, lnk, "file");
+      symlinkCapability = true;
+    } catch {
+      symlinkCapability = false;
+    }
+  } finally {
+    await fse.remove(dir);
+  }
+  return symlinkCapability;
+}
+
 /**
  * Create a temporary, isolated project directory. The directory is fully owned
  * by the test that requested it and is wiped via `dispose()`.

@@ -7,6 +7,7 @@ import {
   WriteResult,
 } from "../types.js";
 import { isManaged, safeWrite } from "../core/conflict.js";
+import { safeLink, safeLinkDir } from "../core/symlink.js";
 import {
   ensureDir,
   listDir,
@@ -60,22 +61,40 @@ export async function aiFileExists(
   }
 }
 
-/** Copy every file under `srcDir` into `destDir` honouring the conflict rules. */
-export async function syncDirectory(
+/**
+ * Reflect a content-passthrough directory (`skills`, `agents`, `commands`,
+ * `hooks/` scripts, or rules that do not need a content transformation) from
+ * `.ai/` into the editor's directory.
+ *
+ * The preferred shape is a single directory link at `destDir` pointing back
+ * to `srcDir` (a junction on Windows, a directory symlink elsewhere) so that
+ * any change to `.ai/` is immediately visible in the editor side without a
+ * second sync. When that is not permitted we fall back to a per-file
+ * link/copy so the contents are still mirrored.
+ */
+export async function linkDirectory(
   srcDir: string,
   destDir: string,
   options: SyncOptions,
-  markerOptions: Parameters<typeof safeWrite>[2] = {},
 ): Promise<WriteResult[]> {
+  if (!(await pathExists(srcDir))) return [];
+
+  const dirOutcome = await safeLinkDir(srcDir, destDir, {
+    dryRun: options.dryRun,
+    force: options.force,
+  });
+  if (dirOutcome.kind === "result") {
+    return [dirOutcome.result];
+  }
+
+  // Directory-level link refused by the platform; fall back to per-file mode.
   const results: WriteResult[] = [];
-  if (!(await pathExists(srcDir))) return results;
   const files = await walkFiles(srcDir);
   for (const rel of files) {
     const src = path.join(srcDir, rel);
     const dest = path.join(destDir, rel);
-    const content = await fse.readFile(src, "utf8");
-    const result = await safeWrite(dest, content, {
-      ...markerOptions,
+    await ensureDir(path.dirname(dest));
+    const result = await safeLink(src, dest, {
       dryRun: options.dryRun,
       force: options.force,
     });

@@ -12,12 +12,13 @@ import {
   aiPath,
   applyImport,
   importDirectory,
+  linkDirectory,
   readJson,
   stripJsonMarker,
-  syncDirectory,
   writeJsonManaged,
 } from "./shared.js";
 import { safeWrite } from "../core/conflict.js";
+import { safeLink } from "../core/symlink.js";
 import { jsonToToml, tomlToJson } from "../utils/toml.js";
 import {
   ensureDir,
@@ -53,16 +54,26 @@ export function createMirrorAdapter(
     const srcDir = aiPath(ctx.root, AI_PATHS.rules);
     const destDir = editorBase(ctx.root, id, "rules");
     if (!(await pathExists(srcDir))) return [];
+
+    // When the editor uses the same `.md` extension as `.ai/rules/`, we can
+    // mirror the whole directory in one shot (junction / dir symlink) so that
+    // edits in `.ai/rules/` are visible to the editor without re-syncing.
+    if (ruleExt.toLowerCase() === ".md") {
+      return linkDirectory(srcDir, destDir, ctx.options);
+    }
+
+    // Different extension required (e.g. `.cursor/rules/*.mdc`); we have to
+    // create per-file links / copies under a renamed name.
     await ensureDir(destDir);
     const results: WriteResult[] = [];
     for (const name of await listDir(srcDir)) {
-      const stat = await fse.stat(path.join(srcDir, name));
+      const src = path.join(srcDir, name);
+      const stat = await fse.stat(src);
       if (!stat.isFile()) continue;
-      const text = await fse.readFile(path.join(srcDir, name), "utf8");
       const base = name.replace(/\.md$/i, "");
       const destName = `${base}${ruleExt}`;
       results.push(
-        await safeWrite(path.join(destDir, destName), text, {
+        await safeLink(src, path.join(destDir, destName), {
           dryRun: ctx.options.dryRun,
           force: ctx.options.force,
         }),
@@ -111,7 +122,7 @@ export function createMirrorAdapter(
     }
     const hooksDir = aiPath(ctx.root, AI_PATHS.hooksDir);
     results.push(
-      ...(await syncDirectory(
+      ...(await linkDirectory(
         hooksDir,
         editorBase(ctx.root, id, "hooks"),
         ctx.options,
@@ -238,7 +249,7 @@ export function createMirrorAdapter(
         case "skills":
         case "agents":
         case "commands":
-          return syncDirectory(
+          return linkDirectory(
             aiPath(ctx.root, type),
             editorBase(ctx.root, id, type),
             ctx.options,
