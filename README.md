@@ -5,14 +5,16 @@
 
 ## Install
 
+推荐全局安装，这样安装后可直接使用 `agentcs`：
+
 ```bash
-npm install -D @lyzz0612/agent-config-sync
+npm install -g @lyzz0612/agent-config-sync
 ```
 
-二进制名为 `agentcs`。也支持一次性使用：
+如果只想临时执行，也可以直接使用：
 
 ```bash
-npx @lyzz0612/agent-config-sync <command>
+npx agentcs <command>
 ```
 
 ## Quick start
