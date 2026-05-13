@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { EDITORS, EditorId } from "./types.js";
 import { runInit } from "./commands/init.js";
@@ -8,7 +9,9 @@ import { runStatus } from "./commands/status.js";
 import { runCheck } from "./commands/check.js";
 import { logger, setVerbose } from "./utils/logger.js";
 
-const VERSION = "0.1.0";
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
+const VERSION = pkg.version;
 
 const program = new Command();
 
