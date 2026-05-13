@@ -128,14 +128,24 @@ npm test
 - workflow file: `.github/workflows/publish.yml`
 - environment: 留空（当前 workflow 未使用 GitHub Environment）
 
-完成绑定后，推送形如 `v0.1.0` 的 tag 会触发：
+完成绑定后，发布流程改为「**版本提交即发布**」：
+
+1. 修改 `package.json` 的 `version`
+2. 提交并推送到 `master`
+3. CI 自动执行：
 
 ```bash
 npm ci
 npm run build
 npm test
 npm publish --provenance --access public
+# 发布成功后再创建 git tag 与 GitHub Release
+git tag -a v<version> -m "Release v<version>"
+git push origin v<version>
+gh release create v<version> --title v<version> --notes "..."
 ```
+
+也就是说：tag `v<version>` 和 GitHub Release 都由 CI 自动创建，**不需要手动打 tag**。如果 `v<version>` tag 或 npm 上对应版本已存在，workflow 会跳过发布以避免重复。
 
 如果此前配置过 `NPM_TOKEN`，可以删除对应的 GitHub Actions secret，避免和 Trusted Publishing 混用。
 

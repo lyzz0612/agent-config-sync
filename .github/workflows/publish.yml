@@ -2,23 +2,109 @@ name: publish
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [master]
+    paths:
+      - "package.json"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
           registry-url: https://registry.npmjs.org
           cache: npm
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
-      - run: npm publish --provenance --access public
+
+      - name: Read package metadata
+        id: meta
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          tag="v${version}"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Package: ${name}@${version} (tag ${tag})"
+
+      - name: Check git tag does not already exist
+        id: check_tag
+        run: |
+          tag="${{ steps.meta.outputs.tag }}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "Tag ${tag} already exists locally; skipping release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git ls-remote --tags --exit-code origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists on origin; skipping release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Check npm version is new
+        if: steps.check_tag.outputs.skip != 'true'
+        id: check_npm
+        run: |
+          name="${{ steps.meta.outputs.name }}"
+          version="${{ steps.meta.outputs.version }}"
+          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+            echo "${name}@${version} already published to npm; skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.check_tag.outputs.skip != 'true' && steps.check_npm.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Build
+        if: steps.check_tag.outputs.skip != 'true' && steps.check_npm.outputs.skip != 'true'
+        run: npm run build
+
+      - name: Test
+        if: steps.check_tag.outputs.skip != 'true' && steps.check_npm.outputs.skip != 'true'
+        run: npm test
+
+      - name: Publish to npm
+        if: steps.check_tag.outputs.skip != 'true' && steps.check_npm.outputs.skip != 'true'
+        run: npm publish --provenance --access public
+
+      - name: Create and push git tag
+        if: steps.check_tag.outputs.skip != 'true' && steps.check_npm.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.meta.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" -m "Release ${tag}"
+          git push origin "${tag}"
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.skip != 'true' && steps.check_npm.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.meta.outputs.tag }}"
+          name="${{ steps.meta.outputs.name }}"
+          version="${{ steps.meta.outputs.version }}"
+          gh release create "${tag}" \
+            --title "${tag}" \
+            --notes "Published \`${name}@${version}\` to npm via GitHub Actions."

@@ -1,6 +1,6 @@
 {
   "name": "@lyzz0612/agent-config-sync",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Sync a single source of AI editor configuration to Cursor, Claude Code, Codex and Qoder.",
   "keywords": [
     "ai",
