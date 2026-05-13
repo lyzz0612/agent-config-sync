@@ -30,6 +30,32 @@ describe("core/detect", () => {
     expect(await findProjectRoot(root)).toBe(path.resolve(root));
   });
 
+  it("findProjectRoot prefers the nearest editor-enabled project over an ancestor p4 root", async () => {
+    const { root, dispose } = await makeTempProject();
+    cleanups.push(dispose);
+    await fse.writeFile(path.join(root, ".p4config"), "P4CLIENT=test\n", "utf8");
+    const project = path.join(root, "games", "proj-m98");
+    const nested = path.join(project, "Source", "Gameplay");
+    await fse.ensureDir(path.join(project, ".cursor"));
+    await fse.ensureDir(nested);
+    expect(await findProjectRoot(nested)).toBe(path.resolve(project));
+  });
+
+  it("findProjectRoot treats a .uproject directory as the project root", async () => {
+    const { root, dispose } = await makeTempProject();
+    cleanups.push(dispose);
+    await fse.writeFile(path.join(root, ".p4config"), "P4CLIENT=test\n", "utf8");
+    const project = path.join(root, "games", "proj-m98");
+    const nested = path.join(project, "Config");
+    await fse.ensureDir(nested);
+    await fse.writeFile(
+      path.join(project, "M98Client.uproject"),
+      '{ "FileVersion": 3 }\n',
+      "utf8",
+    );
+    expect(await findProjectRoot(nested)).toBe(path.resolve(project));
+  });
+
   it("detectEditors only reports directories that exist", async () => {
     const { root, dispose } = await makeTempProject();
     cleanups.push(dispose);
