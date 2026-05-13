@@ -31,8 +31,12 @@ jobs:
           cache: npm
 
       - name: Upgrade npm CLI for OIDC trusted publishing
+        # Node 22.22.2 ships npm 10.9.7 which crashes mid-upgrade with
+        # "Cannot find module 'promise-retry'" when self-upgrading to the
+        # latest npm. Pin to a known-good >=11.5 version that supports OIDC
+        # trusted publishing. See nodejs/node#62425 / npm/cli#9152.
         run: |
-          npm install -g npm@latest
+          npm install -g npm@11.10.0
           node --version
           npm --version
 
