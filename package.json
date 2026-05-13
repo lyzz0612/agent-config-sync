@@ -1,5 +1,5 @@
 {
-  "name": "agent-config-sync",
+  "name": "@lyzz0612/agent-config-sync",
   "version": "0.1.0",
   "description": "Sync a single source of AI editor configuration to Cursor, Claude Code, Codex and Qoder.",
   "keywords": [
@@ -16,6 +16,9 @@
   "type": "module",
   "bin": {
     "agentcs": "./dist/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist",
@@ -43,6 +46,7 @@
     "ora": "^8.1.1"
   },
   "devDependencies": {
+    "@lyzz0612/agent-config-sync": "^0.1.0",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.10.0",
     "typescript": "^5.6.3",

@@ -6,13 +6,13 @@
 ## Install
 
 ```bash
-npm install -D agent-config-sync
+npm install -D @lyzz0612/agent-config-sync
 ```
 
 二进制名为 `agentcs`。也支持一次性使用：
 
 ```bash
-npx agentcs <command>
+npx @lyzz0612/agent-config-sync <command>
 ```
 
 ## Quick start
