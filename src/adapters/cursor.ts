@@ -24,6 +24,7 @@ import {
   pathExists,
   readTextIfExists,
 } from "../utils/fs.js";
+import { parseJson } from "../utils/json.js";
 import { safeWrite } from "../core/conflict.js";
 
 const EDITOR: EditorId = "cursor";
@@ -124,9 +125,10 @@ async function importType(ctx: ImportContext): Promise<WriteResult[]> {
       return results;
     }
     case "mcp": {
-      const text = await readTextIfExists(editorPath(root, "mcp.json"));
+      const file = editorPath(root, "mcp.json");
+      const text = await readTextIfExists(file);
       if (text == null) return [];
-      const parsed = JSON.parse(text) as Record<string, unknown>;
+      const parsed = parseJson<Record<string, unknown>>(text, file);
       const stripped = stripJsonMarker(parsed);
       const next = JSON.stringify(stripped, null, 2) + "\n";
       return [
@@ -149,7 +151,7 @@ async function importType(ctx: ImportContext): Promise<WriteResult[]> {
       const hooksFile = editorPath(root, "hooks.json");
       const hooksText = await readTextIfExists(hooksFile);
       if (hooksText != null) {
-        const parsed = JSON.parse(hooksText) as Record<string, unknown>;
+        const parsed = parseJson<Record<string, unknown>>(hooksText, hooksFile);
         const stripped = stripJsonMarker(parsed);
         results.push(
           await applyImport(

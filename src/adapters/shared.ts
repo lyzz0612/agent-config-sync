@@ -16,6 +16,7 @@ import {
   writeText,
   fse,
 } from "../utils/fs.js";
+import { parseJson } from "../utils/json.js";
 
 const MANAGED_FIELD = "_managedBy";
 const MANAGED_VALUE = MANAGED_MARK;
@@ -89,13 +90,7 @@ export async function readJson<T = unknown>(
 ): Promise<T | null> {
   const text = await readTextIfExists(target);
   if (text == null) return null;
-  try {
-    return JSON.parse(text) as T;
-  } catch (err) {
-    throw new Error(
-      `Failed to parse JSON at ${target}: ${(err as Error).message}`,
-    );
-  }
+  return parseJson<T>(text, target);
 }
 
 export function withJsonMarker<T extends Record<string, unknown>>(

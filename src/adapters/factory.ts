@@ -26,6 +26,7 @@ import {
   pathExists,
   readTextIfExists,
 } from "../utils/fs.js";
+import { parseJson } from "../utils/json.js";
 
 export interface MirrorAdapterOptions {
   id: EditorId;
@@ -125,7 +126,9 @@ export function createMirrorAdapter(
     ctx: ImportContext,
   ): Promise<WriteResult> {
     const parsed =
-      configFormat === "toml" ? tomlToJson(raw) : (JSON.parse(raw) as Record<string, unknown>);
+      configFormat === "toml"
+        ? tomlToJson(raw)
+        : parseJson<Record<string, unknown>>(raw, target);
     const stripped = stripJsonMarker(parsed);
     const text = JSON.stringify(stripped, null, 2) + "\n";
     return applyImport(target, text, {

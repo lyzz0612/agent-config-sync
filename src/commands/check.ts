@@ -2,6 +2,7 @@ import path from "node:path";
 import chalk from "chalk";
 import { detectProject } from "../core/detect.js";
 import { listDir, pathExists, readTextIfExists } from "../utils/fs.js";
+import { parseJson } from "../utils/json.js";
 import { parseFrontmatter } from "../core/converter.js";
 import { logger } from "../utils/logger.js";
 
@@ -73,10 +74,8 @@ async function checkJson(file: string, report: CheckReport): Promise<void> {
   const text = await readTextIfExists(file);
   if (text == null) return;
   try {
-    JSON.parse(text);
+    parseJson(text);
   } catch (err) {
-    report.errors.push(
-      `Invalid JSON in ${file}: ${(err as Error).message}`,
-    );
+    report.errors.push(`Invalid JSON in ${file}: ${(err as Error).message}`);
   }
 }

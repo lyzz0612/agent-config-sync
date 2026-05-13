@@ -59,6 +59,33 @@ describe("commands/import", () => {
     expect(data.mcpServers).toEqual({ x: {} });
   });
 
+  it("tolerates a UTF-8 BOM in editor-side JSON", async () => {
+    const { root, dispose } = await makeTempProject();
+    cleanups.push(dispose);
+    await ensureGitRoot(root);
+    await fse.ensureDir(path.join(root, ".ai"));
+    await fse.ensureDir(path.join(root, ".cursor"));
+    const body = JSON.stringify(
+      { mcpServers: { demo: { command: "node" } } },
+      null,
+      2,
+    );
+    await fse.writeFile(
+      path.join(root, ".cursor", "mcp.json"),
+      "\uFEFF" + body,
+      "utf8",
+    );
+    const code = await runImport({
+      cwd: root,
+      source: "cursor",
+      strategies: { mcp: "overwrite" },
+      syncAfter: false,
+    });
+    expect(code).toBe(0);
+    const data = JSON.parse(await readFile(root, ".ai/mcp.json"));
+    expect(data.mcpServers).toEqual({ demo: { command: "node" } });
+  });
+
   it("merge strategy does not overwrite existing .ai content", async () => {
     const { root, dispose } = await makeTempProject();
     cleanups.push(dispose);
