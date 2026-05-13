@@ -113,3 +113,28 @@ npm test
 ## License
 
 MIT
+## 发布
+
+publish.yml 使用 npm Trusted Publishing，不再依赖 NPM_TOKEN。首次启用前，需要在 npm 包页面或包创建流程里把当前 GitHub 仓库配置为 trusted publisher。
+
+注意：如果 @lyzz0612/agent-config-sync 还没有在 npm 上创建包页面，通常需要先完成一次首次发布/建包，之后才能在 npm 后台绑定 Trusted Publisher。
+
+建议配置：
+
+- npm package: @lyzz0612/agent-config-sync
+- provider: GitHub Actions
+- repository: lyzz0612/agent-config-sync
+- workflow file: .github/workflows/publish.yml
+- environment: 留空（当前 workflow 未使用 GitHub Environment）
+
+完成绑定后，推送形如 0.1.0 的 tag 会触发：
+
+`ash
+npm ci
+npm run build
+npm test
+npm publish --provenance --access public
+`
+
+如果此前配置过 NPM_TOKEN，可以删除对应的 GitHub Actions secret，避免和 Trusted Publishing 混用。
+
